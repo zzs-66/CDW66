@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>樱花之恋 - 游戏进行中</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="scenario.js"></script>
+    <style>
+        #game-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .game-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.8);
+            transition: filter 0.5s ease;
+            z-index: 1;
+        }
+        
+        .background.active {
+            filter: brightness(1);
+        }
+        
+        .character {
+            position: absolute;
+            height: 80%;
+            bottom: 0;
+            z-index: 2;
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: translateX(50px);
+        }
+        
+        .character.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .character.left {
+            left: 10%;
+        }
+        
+        .character.right {
+            right: 10%;
+        }
+        
+        .dialog-container {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 25px;
+            z-index: 5;
+            border-top: 2px solid #e94560;
+        }
+        
+        .speaker {
+            font-size: 22px;
+            color: #e94560;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .dialog {
+            font-size: 18px;
+            line-height: 1.6;
+            min-height: 80px;
+            margin-bottom: 20px;
+        }
+        
+        .choices {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .choice {
+            background: rgba(233, 69, 96, 0.25);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .choice:hover {
+            background: rgba(233, 69, 96, 0.4);
+            border-color: #e94560;
+            transform: translateY(-3px);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid #333;
+        }
+        
+        .btn {
+            background: rgba(233, 69, 96, 0.6);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+        
+        .btn:hover {
+            background: rgba(233, 69, 96, 0.8);
+            transform: scale(1.05);
+        }
+        
+        .progress-bar {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+        }
+        
+        .progress {
+            height: 100%;
+            background: #e94560;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .notification {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px 30px;
+            border-radius: 30px;
+            border: 2px solid #0f3460;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            font-size: 16px;
+        }
+        
+        .notification.active {
+            opacity: 1;
+        }
+        
+        .save-notification {
+            background: rgba(25, 130, 196, 0.9);
+            border-color: #1e90ff;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .character {
+                height: 65%;
+            }
+            
+            .speaker {
+                font-size: 18px;
+            }
+            
+            .dialog {
+                font-size: 16px;
+                min-height: 60px;
+            }
+            
+            .choices {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 14px;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="progress-bar">
+            <div class="progress" id="game-progress"></div>
+        </div>
+        
+        <div class="header">
+            <div class="logo" onclick="location.href='index.html'">樱花之恋</div>
+            <div class="game-stats">
+                <div class="stat">❤️ 好感度: <span id="affection">50</span></div>
+                <div class="stat">📖 第 <span id="chapter">1</span> 章</div>
+                <div class="stat">💾 存档点: <span id="save-point">1</span></div>
+            </div>
+        </div>
+        
+        <div class="game-content">
+            <!-- 背景 -->
+            <div class="background active" id="bg-school"></div>
+            
+            <!-- 角色 -->
+            <img class="character left active" id="character-sakura" alt="Sakura">
+            
+            <!-- 对话框 -->
+            <div class="dialog-container">
+                <div class="speaker">樱</div>
+                <div class="dialog" id="current-dialog"></div>
+                <div class="choices" id="choices-container"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="btn-menu">📋 菜单</button>
+            <button class="btn" id="btn-save">💾 保存</button>
+            <button class="btn" id="btn-load">📂 读取</button>
+            <button class="btn" id="btn-auto">▶️ 自动播放</button>
+            <button class="btn" id="btn-skip">⏩ 跳过</button>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        // 使用Base64编码的占位图片
+        const placeholderImage = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiB2aWV3Qm94PSIwIDAgNDAwIDQwMCI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzNmMjA2MyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ibW9ub3NwYWNlIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSI+Q2hhcmFjdGVyIEltYWdlPC90ZXh0Pjwvc3ZnPg==";
+        const placeholderBG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjgwMCIgdmlld0JveD0iMCAwIDEyMDAgODAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWE1MzVjIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iNDgiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjMiPkJhY2tncm91bmQgSW1hZ2U8L3RleHQ+PC9zdmc+";
+        
+        // DOM元素
+        const elements = {
+            affection: document.getElementById('affection'),
+            chapter: document.getElementById('chapter'),
+            savePoint: document.getElementById('save-point'),
+            currentDialog: document.getElementById('current-dialog'),
+            gameProgress: document.getElementById('game-progress'),
+            notification: document.getElementById('notification'),
+            choicesContainer: document.getElementById('choices-container')
+        };
+        
+        // 游戏状态
+        const gameState = {
+            currentScene: 0,
+            affection: 50,
+            chapter: 1,
+            savePoint: 1,
+            autoPlay: false
+        };
+        
+        // 初始化游戏
+        function initGame() {
+            // 设置占位图片
+            document.getElementById('bg-school').style.backgroundImage = `url('${placeholderBG}')`;
+            document.getElementById('character-sakura').src = placeholderImage;
+            
+            // 检查URL参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const loadGameParam = urlParams.get('load');
+            
+            // 尝试加载保存的游戏
+            const savedGame = localStorage.getItem('galgameSave');
+            if (savedGame && loadGameParam) {
+                try {
+                    const parsed = JSON.parse(savedGame);
+                    Object.assign(gameState, parsed);
+                    showNotification("游戏已加载！");
+                } catch (e) {
+                    console.error("加载存档失败:", e);
+                }
+            }
+            
+            updateUI();
+            
+            // 添加事件监听器
+            document.getElementById('btn-save').addEventListener('click', saveGame);
+            document.getElementById('btn-load').addEventListener('click', loadGame);
+            document.getElementById('btn-menu').addEventListener('click', showMenu);
+            document.getElementById('btn-auto').addEventListener('click', toggleAutoPlay);
+            document.getElementById('btn-skip').addEventListener('click', skipScene);
+        }
+        
+        // 更新游戏UI
+        function updateUI() {
+            const current = script[gameState.currentScene];
+            
+            // 更新文本
+            elements.currentDialog.textContent = current.dialog;
+            document.querySelector('.speaker').textContent = current.speaker;
+            
+            // 更新选择
+            elements.choicesContainer.innerHTML = '';
+            current.choices.forEach((choice, index) => {
+                const choiceElement = document.createElement('div');
+                choiceElement.className = 'choice';
+                choiceElement.textContent = choice.text;
+                choiceElement.addEventListener('click', () => handleChoice(choice));
+                elements.choicesContainer.appendChild(choiceElement);
+            });
+            
+            // 更新状态
+            elements.affection.textContent = gameState.affection;
+            elements.chapter.textContent = gameState.chapter;
+            elements.savePoint.textContent = gameState.savePoint;
+            
+            // 更新进度
+            const progress = ((gameState.currentScene + 1) / script.length) * 100;
+            elements.gameProgress.style.width = `${progress}%`;
+        }
+        
+        // 处理玩家选择
+        function handleChoice(choice) {
+            // 更新好感度
+            gameState.affection += choice.affection;
+            if (gameState.affection > 100) gameState.affection = 100;
+            if (gameState.affection < 0) gameState.affection = 0;
+            
+            // 进入下一场景
+            gameState.currentScene = choice.next;
+            
+            // 更新UI
+            updateUI();
+            
+            // 显示通知
+            if (choice.affection > 0) {
+                showNotification(`好感度 +${choice.affection}`);
+            } else if (choice.affection < 0) {
+                showNotification(`好感度 ${choice.affection}`);
+            }
+        }
+        
+        // 保存游戏
+        function saveGame() {
+            gameState.savePoint = gameState.currentScene;
+            localStorage.setItem('galgameSave', JSON.stringify(gameState));
+            showNotification("游戏已保存！");
+            updateUI();
+        }
+        
+        // 加载游戏
+        function loadGame() {
+            const savedGame = localStorage.getItem('galgameSave');
+            if (savedGame) {
+                try {
+                    const parsed = JSON.parse(savedGame);
+                    Object.assign(gameState, parsed);
+                    updateUI();
+                    showNotification("游戏已加载！");
+                } catch (e) {
+                    showNotification("加载存档失败");
+                    console.error("加载存档失败:", e);
+                }
+            } else {
+                showNotification("没有找到存档");
+            }
+        }
+        
+        // 显示菜单
+        function showMenu() {
+            showNotification("游戏菜单已打开");
+        }
+        
+        // 切换自动播放
